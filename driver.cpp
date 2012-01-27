@@ -40,12 +40,18 @@ extern "C" {
 	{
 		*sp++ = i++;
 	}
+
+	void print_tos() 
+	{
+		printf("TOS = %d\n", *(sp-1));
+	}
 }
 
 void initEEGlobals(bool funcs = true)
 {
 	EE->addGlobalMapping(M->getNamedGlobal("stack"), stack);
 	EE->addGlobalMapping(M->getNamedGlobal("sp"), sp);
+	EE->addGlobalMapping(M->getFunction("print_tos"), (void*)print_tos);
 	if(funcs)
 	{
 		EE->addGlobalMapping(M->getFunction("push1"), (void*)push1);
@@ -61,7 +67,8 @@ void setup()
 
 	std::string ErrStr;
 	EE = EngineBuilder(M).setErrorStr(&ErrStr).create();
-	if (!EE) {
+	if (!EE)
+	{
     fprintf(stderr, "Could not create ExecutionEngine: %s\n", ErrStr.c_str());
     exit(1);
   }
@@ -95,9 +102,12 @@ void loadInlineJit()
 		i != e; ++i)
 	{
 		Function *F = M->getFunction(i->getName());
-		ValueToValueMapTy VMap;
-		SmallVector<ReturnInst*, 8> Returns; 
-		CloneFunctionInto(F, i, VMap, true, Returns);
+		if(!i->empty())
+		{
+			ValueToValueMapTy VMap;
+			SmallVector<ReturnInst*, 8> Returns; 
+			CloneFunctionInto(F, i, VMap, true, Returns);
+		}
 	}
 	EE->clearGlobalMappingsFromModule(M);
 	initEEGlobals(false);	
@@ -171,13 +181,12 @@ int main()
 	x->exec();
 	x1->exec();
 	x1->exec();
-	printf("TOS = %d\n", *(sp-1));
+	print_tos();	
 	
 	loadInlineJit();
 	x1->is_dirty();
 	
 	x1->exec();
-	printf("TOS = %d\n", *(sp-1));
 	
 	for(int i = 0; i < 5; i++)
 	{

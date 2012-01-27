@@ -4,3 +4,4 @@
 @sp = external global i32*
 
 declare void @push1()
+declare void @print_tos()
